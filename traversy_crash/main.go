@@ -86,4 +86,33 @@ func main() {
 	delete(anotherNumbers, 1)
 	fmt.Println(anotherNumbers)
 
+	// Range
+
+	for i, colour := range colourSlice {
+		fmt.Printf("I = %d, Colour = %s\n", i, colour)
+	}
+
+	for _, colour := range colourSlice {
+		fmt.Printf("Colour = %s\n", colour)
+	}
+
+	for key, value := range anotherNumbers {
+		fmt.Printf("Digit = %d, Word = %s\n", key, value)
+	}
+
+	for _, value := range anotherNumbers {
+		fmt.Printf("Word = %s\n", value)
+	}
+
+	// Pointers
+
+	a := 100
+	b := &a
+
+	fmt.Printf("typeof A: %T, typeof B: %T\n", a, b)
+
+	*b = 200
+
+	fmt.Println(a)
+
 }
