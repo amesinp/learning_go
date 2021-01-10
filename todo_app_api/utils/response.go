@@ -2,7 +2,6 @@ package utils
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 )
 
@@ -23,8 +22,6 @@ type jsonResponse struct {
 
 // SendSuccessResponse sends a success json payload
 func SendSuccessResponse(params ResponseParams) {
-	fmt.Println(params)
-
 	params.Writer.WriteHeader(getStatusCode(params.StatusCode, http.StatusOK))
 	json.NewEncoder(params.Writer).Encode(jsonResponse{Success: true, Message: params.Message, Data: params.Data})
 }
@@ -35,7 +32,7 @@ func SendErrorResponse(params ResponseParams) {
 		params.Message = "An error occurred"
 	}
 
-	params.Writer.WriteHeader(getStatusCode(params.StatusCode, http.StatusInternalServerError))
+	params.Writer.WriteHeader(getStatusCode(params.StatusCode, http.StatusBadRequest))
 	json.NewEncoder(params.Writer).Encode(jsonResponse{Success: false, Error: params.Message, Data: params.Data})
 }
 

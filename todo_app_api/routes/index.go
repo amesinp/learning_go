@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/amesinp/learning_go/todo_app_api/utils"
@@ -8,6 +9,9 @@ import (
 )
 
 func index(w http.ResponseWriter, r *http.Request) {
+	header := r.UserAgent()
+	fmt.Println(header)
+
 	utils.SendSuccessResponse(utils.ResponseParams{Writer: w, Message: "Todo API v1"})
 }
 
