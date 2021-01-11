@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/base64"
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -26,6 +27,10 @@ var validate *validator.Validate = validator.New()
 
 // AuthController to categorize controller functions
 type AuthController struct{}
+
+type contextKey struct {
+	name string
+}
 
 type authTokenResponse struct {
 	Token        string     `json:"token"`
@@ -57,8 +62,7 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(loginData.Password))
-	if err != nil {
+	if !isHashEqual(user.PasswordHash, loginData.Password) {
 		utils.SendErrorResponse(utils.ResponseParams{Writer: w, Message: "Invalid username or password", StatusCode: http.StatusUnauthorized})
 		return
 	}
@@ -112,6 +116,50 @@ func (c *AuthController) Register(w http.ResponseWriter, r *http.Request) {
 	utils.SendSuccessResponse(utils.ResponseParams{Writer: w, Message: "Registration completed successfully!", Data: authResponse{token, &user}})
 }
 
+// RefreshToken refreshes an expired access token
+func (c *AuthController) RefreshToken(w http.ResponseWriter, r *http.Request) {
+	var tokenData dto.RefreshTokenDTO
+	json.NewDecoder(r.Body).Decode(&tokenData)
+
+	validationMsg := utils.ValidateDTO(tokenData)
+	if validationMsg != "" {
+		utils.SendErrorResponse(utils.ResponseParams{Writer: w, Message: validationMsg})
+		return
+	}
+
+	claims := r.Context().Value(utils.TokenClaimsKey).(utils.TokenClaims)
+
+	token := refreshTokenRepository.Get(claims.RefreshTokenID)
+
+	// Ensure token is valid and has not expired
+	if token == nil || !isHashEqual(token.TokenHash, tokenData.Token) || token.ExpiresAt.Sub(time.Now()) < 0 {
+		utils.SendErrorResponse(utils.ResponseParams{Writer: w, Message: "Refresh token is not valid"})
+		return
+	}
+
+	// If token has been used before then most likely an attacker has acquired the refresh token
+	// Invalidate all refresh tokens for this user to force the user to login again
+	if token.IsUsed {
+		log.Println("Multiple refresh token usage for user: ", claims.UserID)
+		refreshTokenRepository.DeleteByUserID(claims.UserID)
+
+		utils.SendErrorResponse(utils.ResponseParams{Writer: w, Message: "Refresh token is not valid"})
+		return
+	}
+
+	// Generate new access token
+	authToken, err := generateAuthToken(claims.UserID, r.UserAgent())
+	if err != nil {
+		utils.HandleServerError(w, err)
+		return
+	}
+
+	// Set token to used
+	refreshTokenRepository.UpdateToUsed(token.ID)
+
+	utils.SendSuccessResponse(utils.ResponseParams{Writer: w, Data: authToken})
+}
+
 func generateAuthToken(userID int, userAgent string) (*authTokenResponse, error) {
 	var authToken authTokenResponse
 
@@ -120,11 +168,11 @@ func generateAuthToken(userID int, userAgent string) (*authTokenResponse, error)
 		return &authToken, err
 	}
 
-	tokenExpiry := time.Now().Add(time.Duration(1200))
+	tokenExpiry := time.Now().Add(time.Minute * 15)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user":         userID,
-		"refreshToken": refreshToken.ID,
-		"exp":          tokenExpiry.String(),
+		"sub": userID,
+		"ref": refreshToken.ID,
+		"exp": tokenExpiry.Unix(),
 	})
 
 	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
@@ -181,4 +229,9 @@ func hashPassword(password string) (string, error) {
 	}
 
 	return string(hashedPassword), nil
+}
+
+func isHashEqual(hashedValue, clearValue string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hashedValue), []byte(clearValue))
+	return err == nil
 }

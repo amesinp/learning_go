@@ -11,6 +11,7 @@ type RefreshToken struct {
 	ClearToken string `json:"-"`
 	TokenHash  string `json:"-"`
 	UserAgent  string
+	IsUsed     bool
 	ExpiresAt  *time.Time
 	CreatedAt  *time.Time
 }
