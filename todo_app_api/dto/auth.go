@@ -15,5 +15,5 @@ type RegisterDTO struct {
 
 // RefreshTokenDTO defines the parameters for the refresh token endpoint
 type RefreshTokenDTO struct {
-	Token string `json:"token" validate:"required"`
+	Token string `json:"token" validate:"required" valname:"Refresh token"`
 }

@@ -13,4 +13,5 @@ func authRoutes(router *mux.Router) {
 	router.HandleFunc("/auth/login", controller.Login).Methods("POST")
 	router.HandleFunc("/auth/register", controller.Register).Methods("POST")
 	router.Handle("/auth/refresh", AuthMiddleware(http.HandlerFunc(controller.RefreshToken))).Methods("POST")
+	router.Handle("/auth/logout", AuthMiddleware(http.HandlerFunc(controller.Logout))).Methods("POST")
 }

@@ -11,7 +11,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 
 	"github.com/amesinp/learning_go/todo_app_api/dto"
@@ -22,8 +21,6 @@ import (
 
 var userRepository = repositories.UserRepository{}
 var refreshTokenRepository = repositories.RefreshTokenRepository{}
-
-var validate *validator.Validate = validator.New()
 
 // AuthController to categorize controller functions
 type AuthController struct{}
@@ -50,9 +47,9 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	decoder.Decode(&loginData)
 
-	err := validate.Struct(loginData)
-	if err != nil {
-		utils.SendErrorResponse(utils.ResponseParams{Writer: w, Message: "Invalid username or password", StatusCode: http.StatusUnauthorized})
+	validationMsg := utils.ValidateDTO(loginData)
+	if validationMsg != "" {
+		utils.SendErrorResponse(utils.ResponseParams{Writer: w, Message: validationMsg})
 		return
 	}
 
@@ -158,6 +155,29 @@ func (c *AuthController) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	refreshTokenRepository.UpdateToUsed(token.ID)
 
 	utils.SendSuccessResponse(utils.ResponseParams{Writer: w, Data: authToken})
+}
+
+// Logout invalidates the refresh token
+func (c *AuthController) Logout(w http.ResponseWriter, r *http.Request) {
+	claims := r.Context().Value(utils.TokenClaimsKey).(utils.TokenClaims)
+
+	if r.URL.Query().Get("all") == "true" {
+		refreshTokenRepository.DeleteByUserID(claims.UserID)
+		utils.SendSuccessResponse(utils.ResponseParams{Writer: w, Message: "Logout successful! It might take a few minutes to reflect on all devices"})
+		return
+	}
+
+	token := refreshTokenRepository.Get(claims.RefreshTokenID)
+	if token != nil {
+		// If refresh token has already been used then it is likely that token has been hijacked
+		if token.IsUsed {
+			refreshTokenRepository.DeleteByUserID(token.UserID)
+		} else {
+			refreshTokenRepository.Delete(token.ID)
+		}
+	}
+
+	utils.SendSuccessResponse(utils.ResponseParams{Writer: w, Message: "Logout successful!"})
 }
 
 func generateAuthToken(userID int, userAgent string) (*authTokenResponse, error) {
