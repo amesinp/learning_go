@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 
@@ -41,12 +42,20 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			return []byte(os.Getenv("JWT_SECRET")), nil
 		})
 
+		checkRefExpiry := false
+
 		if err != nil || !token.Valid {
-			utils.HandleAuthenticationError(w)
-			return
+			// If the token has expired and the user is trying to refresh then allow it
+			if r.RequestURI == RefreshTokenURI && err.Error() == "Token is expired" {
+				checkRefExpiry = true
+			} else {
+				utils.HandleAuthenticationError(w)
+				return
+			}
 		}
 
-		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if ok && (!checkRefExpiry || (checkRefExpiry && isRefreshTokenValid(claims))) {
 			ctx := context.WithValue(r.Context(), utils.TokenClaimsKey, utils.TokenClaims{
 				UserID:         int(claims["sub"].(float64)),
 				RefreshTokenID: int(claims["ref"].(float64)),
@@ -56,6 +65,11 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			utils.HandleAuthenticationError(w)
 		}
 	})
+}
+
+func isRefreshTokenValid(claims jwt.MapClaims) bool {
+	refreshTokenExpiry := time.Unix(int64(claims["refExp"].(float64)), 0)
+	return refreshTokenExpiry.Sub(time.Now()) > 0
 }
 
 // ConfigureRouter sets up the application routes

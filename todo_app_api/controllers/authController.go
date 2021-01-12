@@ -190,9 +190,10 @@ func generateAuthToken(userID int, userAgent string) (*authTokenResponse, error)
 
 	tokenExpiry := time.Now().Add(time.Minute * 15)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub": userID,
-		"ref": refreshToken.ID,
-		"exp": tokenExpiry.Unix(),
+		"sub":    userID,
+		"ref":    refreshToken.ID,
+		"refExp": refreshToken.ExpiresAt.Unix(),
+		"exp":    tokenExpiry.Unix(),
 	})
 
 	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
