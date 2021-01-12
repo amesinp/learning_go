@@ -12,7 +12,7 @@ Implementation of the API for a simple TODO application.
 ### Run migrations
 
 1. Install migrate (https://github.com/golang-migrate/migrate)
-2. Run `migrate -database DB_CONNECTION_URL -path ./migrations/ up 2 -path ./migrations up 2`. Db connection url example: (postgres://username:password@localhost:5432/database_name)
+2. Run `migrate -database DB_CONNECTION_URL -path ./migrations up 4`. Db connection url example: (postgres://username:password@localhost:5432/database_name)
 
 ### Start the server
 
