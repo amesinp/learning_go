@@ -64,6 +64,7 @@ func ConfigureRouter() *mux.Router {
 	router.Use(jsonMiddleware)
 
 	authRoutes(router)
+	todoRoutes(router)
 
 	router.HandleFunc("/", index)
 

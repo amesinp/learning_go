@@ -1,42 +1,12 @@
 package repositories
 
 import (
-	"fmt"
-
 	"github.com/amesinp/learning_go/todo_app_api/config"
 	"github.com/amesinp/learning_go/todo_app_api/models"
 )
 
 // UserRepository struct is to categorize the user repository functions
 type UserRepository struct{}
-
-// GetBy returns an array of users
-func (r *UserRepository) GetBy(skip int, limit int, includeCount bool) []models.User {
-	var sqlQuery string
-	if includeCount {
-		sqlQuery = fmt.Sprintf("SELECT *, COUNT(*) OVER() AS total_count FROM users LIMIT %d OFFSET %d", limit, skip)
-	} else {
-		sqlQuery = fmt.Sprintf("SELECT * FROM users LIMIT %d OFFSET %d", limit, skip)
-	}
-
-	rows, err := config.DB.Query(sqlQuery)
-	if err != nil {
-		return nil
-	}
-	defer rows.Close()
-
-	result := []models.User{}
-	for rows.Next() {
-		var user models.User
-		err = rows.Scan(&user.ID, &user.Name, &user.UserName, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt)
-		if err != nil {
-			continue
-		}
-		result = append(result, user)
-	}
-
-	return result
-}
 
 // Get returns a single user using the user id
 func (r *UserRepository) Get(id int) *models.User {
